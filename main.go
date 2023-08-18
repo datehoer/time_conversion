@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -45,7 +47,44 @@ func parseRelativeTime(input string) (time.Time, bool) {
 	return now.Add(-duration), true
 }
 
+func parseSpecialDate(input string) (time.Time, error) {
+
+	// Using a regular expression to match the special date formats (MM.DD or M月D日)
+	specialDatePattern := regexp.MustCompile(`^(\d{1,2})[.月](\d{1,2})[日]*$`)
+	matches := specialDatePattern.FindStringSubmatch(input)
+	fmt.Printf("Attempting to parse special date: %s\n", input)
+	if len(matches) != 3 {
+		return time.Time{}, fmt.Errorf("Invalid special date format")
+	}
+
+	// Extracting the month and day
+	month, err := strconv.Atoi(matches[1])
+	if err != nil || month < 1 || month > 12 {
+		return time.Time{}, fmt.Errorf("Invalid month value")
+	}
+
+	day, err := strconv.Atoi(matches[2])
+	if err != nil || day < 1 || day > 31 {
+		return time.Time{}, fmt.Errorf("Invalid day value")
+	}
+
+	// Using the current year
+	currentYear := time.Now().Year()
+
+	// Creating a time.Time object with the extracted values
+	parsedDate := time.Date(currentYear, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+
+	return parsedDate, nil
+}
+
 func parseDate(input string, includeHour bool) (string, error) {
+	specialDate, err := parseSpecialDate(input)
+	if err == nil {
+		if includeHour {
+			return specialDate.Format("2006-01-02 15:04:05"), nil
+		}
+		return specialDate.Format("2006-01-02"), nil
+	}
 	dateLayouts := []string{
 		"2006-01-02",
 		"2006/01/02",
@@ -128,8 +167,37 @@ func dateFormatHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, formattedDate)
 }
 
+func convertUsageHandler(c *gin.Context) {
+	usage := `
+    使用 /convert API 以将日期从一种格式转换为另一种格式。
+    用法：
+        GET /convert?date=DATE&hour=BOOLEAN
+    参数：
+        date - 要转换的日期。
+        hour - 是否包括小时（可选，默认为false）。
+
+    示例：
+        GET /convert?date=01月02日&hour=true
+		return 2023-01-02 00:00:00
+
+		GET /convert?date=01月02日
+		return 2023-01-02
+
+		GET /convert?date=2 January, 2006
+		return 2006-01-02
+    `
+	c.String(http.StatusOK, usage)
+}
+
 func main() {
-	http.HandleFunc("/convert", dateFormatHandler)
-	fmt.Println("服务器已启动，监听 :8080 端口")
-	http.ListenAndServe(":8080", nil)
+	r := gin.Default()
+	r.Use(cors.Default())
+	r.GET("/convert", func(c *gin.Context) {
+		w := c.Writer
+		r := c.Request
+		dateFormatHandler(w, r)
+	})
+	r.GET("/api", convertUsageHandler)
+	// Define your routes and handlers here
+	r.Run(": 4447") // listen and serve on 0.0.0.0:4447 (for windows "localhost:4447")
 }
