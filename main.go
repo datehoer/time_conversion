@@ -78,6 +78,24 @@ func parseSpecialDate(input string) (time.Time, error) {
 }
 
 func parseDate(input string, includeHour bool) (string, error) {
+
+	//re := regexp.MustCompile(`^(.+)\s([\+\-]\d{2}:\d{2})$`)
+	//matches := re.FindStringSubmatch(input)
+	//if len(matches) == 3 {
+	//	datetime, err := time.Parse("2006-01-02 15:04:05", matches[1])
+	//	if err == nil {
+	//		offset, err := time.ParseDuration(matches[2] + "0m")
+	//		if err == nil {
+	//			tz := time.FixedZone("UTC", int(offset.Seconds()))
+	//			datetime = datetime.In(tz)
+	//			if includeHour {
+	//				return datetime.Format("2006-01-02 15:04:05"), nil
+	//			}
+	//			return datetime.Format("2006-01-02"), nil
+	//		}
+	//	}
+	//}
+
 	specialDate, err := parseSpecialDate(input)
 	if err == nil {
 		if includeHour {
@@ -105,13 +123,15 @@ func parseDate(input string, includeHour bool) (string, error) {
 		"2006/01/02 15:04:05",
 		"2006.01.02 15:04:05",
 		"01-02-2006 15:04:05",
+		"2006-01-02 15:04:05 -07:00",
+		"2006-01-02 15:04:05 -0700",
 		"01/02/2006 15:04:05",
 		"2006年01月02日 15:04:05",
 		"2 January, 2006 15:04:05",
 		"January 2, 2006 15:04:05",
 		"2006-01-02T15:04:05.000Z",
+		"2006-01-02T15:04:05Z",
 	}
-
 	layouts := dateLayouts
 	if includeHour {
 		layouts = append(layouts, dateTimeLayouts...)
@@ -199,5 +219,5 @@ func main() {
 	})
 	r.GET("/api", convertUsageHandler)
 	// Define your routes and handlers here
-	r.Run(": 4447") // listen and serve on 0.0.0.0:4447 (for windows "localhost:4447")
+	r.Run(":4447") // listen and serve on 0.0.0.0:4447 (for windows "localhost:4447")
 }
